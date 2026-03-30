@@ -8,7 +8,7 @@ A production grade stacking hybrid ensemble for predicting stability in a 4 node
 Developed by : Husain Ali Al Hashem (2160425)
 Supervisor   : Dr. Shamsul Masum
 Institution  : University of Portsmouth
-Programme    : BEng Electrical & Renewable Energy Engineering
+Programme    : BEng (Hons) Renewable Energy Engineering
 Year         : 2025–2026
 ```
 
