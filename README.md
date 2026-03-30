@@ -104,7 +104,7 @@ ECE increased 214 fold under drift. Conformal coverage fell below the 95% target
 Three complementary drift detectors monitor prediction quality as streaming signals:
 
 | Detector | Monitors | Detects | Method |
-
+|----------|----------|---------|--------|
 | PSI | Feature distributions per batch | Distribution shift | Population Stability Index against training reference           |
 | CUSUM | Rolling Brier score, rolling confidence | Mean shift in calibration quality | Cumulative sum with adaptive threshold |
 | Page Hinkley | Rolling Brier score, rolling confidence | Gradual mean deviation | Cumulative deviation from running mean     |
