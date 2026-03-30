@@ -302,8 +302,8 @@ Model Service ──> Prometheus Gauges ──> Prometheus ──> Alertmanager 
 ```
 
 # Proposed Recalibration Triggers
-
-| Condition | Proposed Action                                                                         |
+|Condition | Proposed Action|
+|----------|-----------------|
 | PSI > 0.25 on any batch | Flag distribution shift, enter heightened monitoring                      |
 | CUSUM exceeds threshold for 5 minutes | Trigger LaSCal unsupervised recalibration (not implemented) |
 | Conformal coverage < 90% for 5 consecutive batches | Escalate to full retrain alert                 |
@@ -377,5 +377,5 @@ All library versions are logged in `run_metadata.json`. Stage wise checkpoints (
 
 # License
 
-Academic use. University of Portsmouth, 2025 to 2026.
+This project is shared for academic and portfolio review purposes only. See the `LICENSE` file for details.
 
