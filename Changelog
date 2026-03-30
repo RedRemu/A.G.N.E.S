@@ -1,0 +1,104 @@
+# Changelog
+
+All notable changes to A.G.N.E.S. (Adaptive Grid Neural Engineering System) are documented in this file.
+
+## v4.2 (2026-03-28)
+
+### Added
+- CUSUM sequential change detection on rolling Brier score and rolling confidence streams
+- Page Hinkley sequential change detection as a complementary gradual drift detector
+- Triple signal drift detection figure (PSI, CUSUM, Page Hinkley side by side)
+- First alert batch logging for all three detectors in streaming summary
+- CPCV configuration flags (use_cpcv, cpcv_purge_batches, cpcv_embargo_batches) for deployment readiness on temporal data
+- Governance metadata block with monitoring metrics list, recalibration triggers, and auditability records
+- SHAP stability under drift analysis (feature rankings verified across clean, gradual, and abrupt phases)
+- Cross regime validation (train on one operating regime, test on another)
+- Synthetic DSGC data generation with physics derived labels for out of distribution testing
+- Feature space PSI and KL divergence computed per batch against training distributions
+- Inference latency benchmarking (single sample and batch throughput)
+- 19 publication quality figures generated automatically at 300 DPI
+- ROC curves, precision recall curves, confusion matrix heatmaps, and feature correlation matrix figures
+
+### Changed
+- Renamed from A.N.E. (Atlas Nexus Engine) to A.G.N.E.S. (Adaptive Grid Neural Engineering System)
+- Streaming simulation now includes confidence_mean per batch for CUSUM monitoring
+- Streaming summary JSON includes drift_signals block with all detector results
+- All display text cleaned to pure ASCII (no Unicode decorative characters)
+- Console output uses clean ASCII formatting throughout
+
+## v4.1 (2026-03-16)
+
+### Added
+- Three layer streaming deployment simulation (concept drift + regime change + SCADA corruption)
+- Gradual tau drift simulating aging inverters with increasing reaction times
+- Abrupt gamma shift simulating sudden network reconfiguration
+- SCADA corruption layer: Gaussian sensor noise, ADC quantisation, missing values, measurement latency
+- Rolling window metrics (AUC, ECE, Brier, coverage) across 120 streaming batches
+- Phase summaries (pre drift, gradual, post abrupt) for all four models
+- Conformal coverage tracking under drift conditions
+- PSI based recalibration alert system with configurable threshold
+- Browser export (JSON model bundle for web deployment)
+- Auto stabiliser using Adam optimiser for corrective grid control actions
+
+### Changed
+- Expanded stress testing to run all four models (previously only Hybrid)
+- Monte Carlo noise testing now covers SVM, RF, and LGBM alongside Hybrid
+
+## v4.0 (2026-03-10)
+
+### Added
+- RFECV feature selection (48 engineered features reduced to 14)
+- Physics informed feature engineering v4: F_gain (feedback gain), H_net (network heterogeneity), V_weak (worst case vulnerability)
+- Cost optimal threshold selection with configurable cost matrix (FN cost = 10, FP cost = 1)
+- Three level risk index (STABLE, BORDERLINE, CRITICAL) with data driven boundaries
+- Conformal prediction with split conformal method and finite sample correction
+- Paired bootstrap AUC significance test (2000 resamples)
+- Learning curve analysis (AUC vs training size for all models)
+- FGSM adversarial robustness testing at six epsilon levels across all models
+- Calibration drift analysis under noise and OOD stress
+- Stage wise checkpoints for crash recovery (checkpoint_hpo.joblib, checkpoint_models.joblib)
+
+### Changed
+- Feature pipeline expanded from 24 to 48 candidates before RFECV selection
+- Evaluation suite expanded with Brier score, ECE, PR AUC, log loss alongside existing AUC and F1
+- Permutation importance now uses 5 repeats for stability
+
+## v3.0 (2026-02-20)
+
+### Added
+- Stacking hybrid ensemble (SVM + RF base learners with logistic meta learner)
+- Calibrated probability outputs via Platt scaling (SVM) and isotonic regression (RF, LGBM)
+- Bayesian hyperparameter optimisation via Optuna with TPE sampler
+- Parallel HPO mode (concurrent SVM, RF, LGBM searches via ThreadPoolExecutor)
+- SHAP explainability with TreeExplainer on RF and LGBM including interaction values
+- Full stress testing suite: Gaussian noise injection, OOD scaling, boundary sensitivity, Monte Carlo
+- Physics informed features v3: D_eff (effective damping), R (responsiveness), delta_g (elasticity deviation)
+- Cross validated evaluation (5 fold stratified)
+
+### Changed
+- Moved from single model evaluation to four model comparison (SVM, RF, LightGBM, Logistic Regression)
+- Added validation split for calibration (60/20/20 train/val/test)
+- Parallelism enforced to single layer to prevent thread oversubscription
+
+## v2.0 (2026-01-25)
+
+### Added
+- SVM with RBF kernel and probability estimates
+- Random Forest classifier with balanced class weights
+- LightGBM with early stopping
+- Basic feature engineering: per node D_eff and R features
+- Aggregate statistics: tau_mean, tau_std, g_mean, g_std, p_imbalance
+- Stratified train/test split
+- AUC and F1 evaluation metrics
+
+### Changed
+- Migrated from notebook based workflow to single script pipeline
+- Structured output to artifacts directory
+
+## v1.0 (2025-12-15)
+
+### Added
+- Initial exploratory analysis of UCI Smart Grid Stability dataset
+- Logistic Regression baseline
+- Basic accuracy evaluation
+- Data loading and preprocessing
