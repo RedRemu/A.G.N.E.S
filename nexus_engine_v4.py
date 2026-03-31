@@ -1,51 +1,45 @@
 
 """
-A.G.N.E.S.  Adaptive Grid Neural Engineering System v4.2
-Smart Grid Stability Intelligence
++----------------------------------------------------------------------+
+|  A.G.N.E.S.  Adaptive Grid Neural Engineering System v4.2            |
+|  Smart Grid Stability Intelligence                                   |
+|                                                                      |
+|  Author      : Husain Ali Al Hashem (2160425)                        |
+|  Supervisor  : Dr. Shamsul Masum                                     |
+|  Institution : University of Portsmouth                              |
+|  Programme   : BEng Electrical and Renewable Energy Engineering      |
+|  Year        : 2025 to 2026                                          |
++----------------------------------------------------------------------+
 
-Developed by : Husain Ali Al Hashem (2160425)
-Supervisor   : Dr. Shamsul Masum
-Institution  : University of Portsmouth
-Programme    : BEng Electrical and Renewable Energy Engineering
-Year         : 2025 to 2026
+Production grade stacking hybrid ensemble for predicting stability
+in a 4 node Decentral Smart Grid Control (DSGC) network.
 
-Production-grade stacking hybrid ensemble for predicting stability
-in a 4-node Decentral Smart Grid Control (DSGC) network.
-
-Architecture (v4 additions over v3)
----------------------------------------------------
-  1. [v4] Enhanced Physics Informed Feature Engineering
-     - D_eff = g/tau, R = 1/tau, delta_g = g minus mean(g)  (v3)
-     - [v4] F_gain = tau*g        (feedback gain per node)
-     - [v4] H_net = CV(D_eff)   (network heterogeneity index)
-     - [v4] V_weak = max(|p|/g)  (worst-case vulnerability)
-     - [v4] Followed by RFECV feature selection
-
-  2. Bayesian Hyperparameter Optimisation (Optuna)
-  3. Four Base Learners (SVM, RF, LightGBM, LR)
-  4. Stacking Hybrid Ensemble (SVM + RF)
-  5. Probability Calibration Pipeline
-
-  6. [v4] Advanced Evaluation Suite
-     - [v4] Cost optimal threshold selection (Risk Index)
-     - [v4] Conformal prediction with coverage guarantee
-     - [v4] Paired bootstrap AUC significance test
-     - [v4] Learning curve analysis
-     - [v4] FGSM adversarial robustness testing
-     - [v4] Calibration drift under stress
-
-  7. SHAP Explainability
-  8. Full Stress Testing (noise, OOD, boundary, MC, adversarial)
-  9. Adam Auto-Stabilizer
- 10. Browser Export
+Pipeline Architecture
+    1.  [v4] Physics Informed Feature Engineering (48 candidates)
+    2.  [v4] RFECV Feature Selection (48 to 14)
+    3.  Bayesian Hyperparameter Optimisation (Optuna TPE)
+    4.  Four Base Learners (SVM, RF, LightGBM, LR)
+    5.  Stacking Hybrid Ensemble (SVM + RF + Logistic meta)
+    6.  Probability Calibration (Platt, Isotonic)
+    7.  [v4] Cost Optimal Thresholds + 3 Level Risk Index
+    8.  [v4] Conformal Prediction (split conformal, finite sample)
+    9.  [v4] Paired Bootstrap AUC Significance Test
+    10. [v4] Learning Curve Analysis
+    11. [v4] FGSM Adversarial Robustness (6 epsilon levels)
+    12. Full Stress Testing (noise, OOD, boundary, Monte Carlo)
+    13. Streaming Deployment Simulation (3 layer, 120 batches)
+    14. Sequential Change Detection (PSI, CUSUM, Page Hinkley)
+    15. SHAP Explainability + Interaction Analysis
+    16. Generalisation Suite (synthetic DSGC, cross regime)
+    17. Adam Auto Stabiliser (corrective grid control)
+    18. Browser Export (JSON model bundle)
 
 Dependencies
-------------
-  pip install numpy pandas scikit-learn lightgbm optuna shap joblib openpyxl scipy
+    pip install numpy pandas scikit-learn lightgbm optuna shap
+    pip install joblib openpyxl scipy matplotlib
 
 Usage
------
-  python nexus_engine_v4.py
+    python nexus_engine_v4.py
 """
 
 from __future__ import annotations
@@ -117,9 +111,9 @@ except ImportError:
     print("[!]  SHAP not installed .. skipping explainability.\n")
 
 
-# ----------------------------------------------------------------
-# CONFIGURATION
-# ----------------------------------------------------------------
+# ====================================================================
+#  CONFIGURATION
+# ====================================================================
 
 @dataclass
 class Config:
@@ -259,34 +253,35 @@ def resolve_parallelism(cfg: Config) -> Config:
 CFG = resolve_parallelism(Config())
 
 
-# ----------------------------------------------------------------
-# CONSOLE OUTPUT
-# ----------------------------------------------------------------
+# ====================================================================
+#  CONSOLE OUTPUT
+# ====================================================================
 
 class Console:
     WIDTH = 70
 
     @staticmethod
     def banner():
+        w = Console.WIDTH
         print()
-        print("=" * (Console.WIDTH + 2))
-        print("  " + " A.G.N.E.S.  ADAPTIVE GRID NEURAL ENGINEERING SYSTEM v4.2".center(Console.WIDTH) + "  ")
-        print("  " + " Smart Grid Stability Intelligence".center(Console.WIDTH) + "  ")
-        print("  " + " Stacking Hybrid / RFECV / Conformal / Adversarial".center(Console.WIDTH) + "  ")
-        print("  " + "".center(Console.WIDTH) + "  ")
-        print("  " + " Husain Ali Al Hashem (2160425)".center(Console.WIDTH) + "  ")
-        print("  " + " University of Portsmouth, 2025 to 2026".center(Console.WIDTH) + "  ")
-        print("=" * (Console.WIDTH + 2))
+        print("+" + "-" * w + "+")
+        print("|" + "A.G.N.E.S. v4.2".center(w) + "|")
+        print("|" + "Adaptive Grid Neural Engineering System".center(w) + "|")
+        print("|" + "Smart Grid Stability Intelligence".center(w) + "|")
+        print("|" + "".center(w) + "|")
+        print("|" + "Husain Ali Al Hashem (2160425)".center(w) + "|")
+        print("|" + "University of Portsmouth, 2025 to 2026".center(w) + "|")
+        print("+" + "-" * w + "+")
         print()
 
     @staticmethod
     def section(title: str):
-        bar = "-" * (Console.WIDTH - len(title) - 3)
-        print(f"\n[{title}] {bar}")
+        pad = Console.WIDTH - len(title) - 4
+        print(f"\n  {title}  " + "." * max(pad, 4))
 
     @staticmethod
     def subsection(title: str):
-        print(f"  > {title}")
+        print(f"  | {title}")
 
     @staticmethod
     def kv(label: str, value):
@@ -294,7 +289,7 @@ class Console:
 
     @staticmethod
     def done(msg: str = "Complete"):
-        print(f"    Done: {msg}")
+        print(f"  + {msg}")
 
     @staticmethod
     def table(headers, rows, col_widths=None):
@@ -307,9 +302,9 @@ class Console:
             print("    " + "  ".join(str(v).ljust(w) for v, w in zip(row, col_widths)))
 
 
-# ----------------------------------------------------------------
-# DATA LOADING
-# ----------------------------------------------------------------
+# ====================================================================
+#  DATA LOADING
+# ====================================================================
 
 def load_dataset(path: str | Path) -> tuple[pd.DataFrame, np.ndarray]:
     path = Path(path)
@@ -331,9 +326,9 @@ def load_dataset(path: str | Path) -> tuple[pd.DataFrame, np.ndarray]:
     return X, y.to_numpy(dtype=int)
 
 
-# ----------------------------------------------------------------
-# ENHANCED FEATURE ENGINEERING (v4)
-# ----------------------------------------------------------------
+# ====================================================================
+#  FEATURE ENGINEERING
+# ====================================================================
 
 def engineer_features(X: pd.DataFrame) -> pd.DataFrame:
     """
@@ -357,7 +352,7 @@ def engineer_features(X: pd.DataFrame) -> pd.DataFrame:
             safe_tau = Xn[tc].replace(0, 1e-9)
             Xn[f"D_eff_{i}"] = Xn[gc] / safe_tau         # Effective damping
             Xn[f"R_{i}"] = 1.0 / safe_tau                 # Responsiveness
-            Xn[f"F_gain_{i}"] = Xn[tc] * Xn[gc]           # [v4] Feedback gain
+            Xn[f"F_gain_{i}"] = Xn[tc] * Xn[gc]           # (v4) Feedback gain
 
         g_mean_row = Xn[g_cols].mean(axis=1)
         for i, gc in enumerate(g_cols, 1):
@@ -389,7 +384,7 @@ def engineer_features(X: pd.DataFrame) -> pd.DataFrame:
         Xn["D_eff_mean"] = Xn[d_eff_cols].mean(axis=1)
         Xn["D_eff_std"] = Xn[d_eff_cols].std(axis=1)
         Xn["D_eff_min"] = Xn[d_eff_cols].min(axis=1)
-        # [v4] Network heterogeneity index
+        # (v4) Network heterogeneity index
         safe_mean = Xn["D_eff_mean"].replace(0, 1e-9)
         Xn["H_net"] = Xn["D_eff_std"] / safe_mean
 
@@ -402,7 +397,7 @@ def engineer_features(X: pd.DataFrame) -> pd.DataFrame:
         Xn["F_gain_std"] = Xn[f_gain_cols].std(axis=1)
         Xn["F_gain_min"] = Xn[f_gain_cols].min(axis=1)
 
-    # [v4] Worst-case vulnerability: max(|p_i| / g_i)
+    # (v4) Worst-case vulnerability: max(|p_i| / g_i)
     if p_cols and g_cols and len(p_cols) == len(g_cols):
         vuln_cols = []
         for i, (pc, gc) in enumerate(zip(p_cols, g_cols), 1):
@@ -417,9 +412,9 @@ def engineer_features(X: pd.DataFrame) -> pd.DataFrame:
     return Xn
 
 
-# ----------------------------------------------------------------
-# RFECV FEATURE SELECTION (v4)
-# ----------------------------------------------------------------
+# ====================================================================
+#  RFECV FEATURE SELECTION
+# ====================================================================
 
 def run_rfecv(X_train: pd.DataFrame, y_train: np.ndarray,
               cfg: Config) -> tuple[list[str], RFECV]:
@@ -450,9 +445,9 @@ def run_rfecv(X_train: pd.DataFrame, y_train: np.ndarray,
     return selected, selector
 
 
-# ----------------------------------------------------------------
-# BAYESIAN HPO (same as v3)
-# ----------------------------------------------------------------
+# ====================================================================
+#  BAYESIAN HYPERPARAMETER OPTIMISATION
+# ====================================================================
 
 def optimise_svm(X_train, y_train, cfg):
     """Bayesian HPO for SVM. Trials run in parallel via Optuna n_jobs."""
@@ -553,9 +548,9 @@ def run_parallel_hpo(X_train, y_train, cfg):
     return results.get("SVM", {}), results.get("RF", {}), results.get("LGBM", {})
 
 
-# ----------------------------------------------------------------
-# MODEL BUILDING (same as v3)
-# ----------------------------------------------------------------
+# ====================================================================
+#  MODEL BUILDING
+# ====================================================================
 
 def build_models(cfg, svm_params, rf_params, lgbm_params):
     models = {}
@@ -590,9 +585,9 @@ def build_models(cfg, svm_params, rf_params, lgbm_params):
     return models
 
 
-# ----------------------------------------------------------------
-# CALIBRATION
-# ----------------------------------------------------------------
+# ====================================================================
+#  CALIBRATION
+# ====================================================================
 
 def _make_calibrated(model, method, X_val, y_val):
     """Create a calibrated wrapper that works across sklearn versions."""
@@ -624,8 +619,15 @@ def calibrate_models(models, X_val, y_val, cfg):
         calibrated[name] = _make_calibrated(model, method_map.get(name, "isotonic"), X_val, y_val)
     return calibrated
 
-def expected_calibration_error(y_true, p, n_bins=10):
-    """ECE with final bin including p=1.0 (uses <= instead of < for last bin)."""
+def expected_calibration_error(y_true, p, n_bins=15):
+    """
+    Expected Calibration Error with 15 bins.
+
+    Uses uniform binning with final bin including p=1.0.
+    15 bins provides finer resolution than the standard 10,
+    better capturing miscalibration in models with extreme
+    probability outputs.
+    """
     bins = np.linspace(0, 1, n_bins + 1)
     ece = 0.0
     for b in range(len(bins) - 1):
@@ -640,9 +642,9 @@ def expected_calibration_error(y_true, p, n_bins=10):
     return ece / max(len(y_true), 1)
 
 
-# ----------------------------------------------------------------
-# STACKING HYBRID (same as v3)
-# ----------------------------------------------------------------
+# ====================================================================
+#  STACKING HYBRID ENSEMBLE
+# ====================================================================
 
 class StackingHybridSVMRF(BaseEstimator, ClassifierMixin):
     _estimator_type = "classifier"
@@ -725,9 +727,9 @@ class StackingHybridSVMRF(BaseEstimator, ClassifierMixin):
         return (self.predict_proba(X)[:, 1] >= 0.5).astype(int)
 
 
-# ----------------------------------------------------------------
-# EVALUATION
-# ----------------------------------------------------------------
+# ====================================================================
+#  EVALUATION
+# ====================================================================
 
 def compute_metrics(y_true, p, threshold=0.5):
     y_pred = (p >= threshold).astype(int)
@@ -752,19 +754,45 @@ def risk_index(p, stable_thresh, critical_thresh):
     r[p >= critical_thresh] = 2
     return r
 
-def calibration_analysis(y_true, probs_dict, n_bins=10):
+def calibration_analysis(y_true, probs_dict, n_bins=15):
+    """
+    Calibration curve analysis using quantile binning.
+
+    Uses strategy='quantile' to ensure evenly populated bins, which
+    produces more stable curves when models output extreme probabilities
+    (near 0 or 1). This is the correct approach for well discriminating
+    models where uniform bins leave most bins empty.
+
+    Also computes uniform binning for comparison and interpretation.
+    """
     rows = []
     for name, p in probs_dict.items():
-        frac, pred = calibration_curve(y_true, p, n_bins=n_bins, strategy="uniform")
-        for f, pr in zip(frac, pred):
-            rows.append({"model": name, "mean_predicted": round(float(pr), 4),
-                         "fraction_positive": round(float(f), 4)})
+        # Quantile strategy: evenly populated bins (primary)
+        try:
+            frac_q, pred_q = calibration_curve(y_true, p, n_bins=n_bins, strategy="quantile")
+            for f, pr in zip(frac_q, pred_q):
+                rows.append({"model": name, "strategy": "quantile",
+                             "mean_predicted": round(float(pr), 4),
+                             "fraction_positive": round(float(f), 4)})
+        except ValueError:
+            pass
+
+        # Uniform strategy: equal width bins (for comparison)
+        try:
+            frac_u, pred_u = calibration_curve(y_true, p, n_bins=n_bins, strategy="uniform")
+            for f, pr in zip(frac_u, pred_u):
+                rows.append({"model": name, "strategy": "uniform",
+                             "mean_predicted": round(float(pr), 4),
+                             "fraction_positive": round(float(f), 4)})
+        except ValueError:
+            pass
+
     return pd.DataFrame(rows)
 
 
-# ----------------------------------------------------------------
-# v4 NEW: COST-OPTIMAL THRESHOLD SELECTION
-# ----------------------------------------------------------------
+# ====================================================================
+#  COST OPTIMAL THRESHOLD SELECTION
+# ====================================================================
 
 def optimise_thresholds(y_val, p_val, cost_fn=10.0, cost_fp=1.0):
     """
@@ -824,9 +852,9 @@ def optimise_thresholds(y_val, p_val, cost_fn=10.0, cost_fp=1.0):
     }
 
 
-# ----------------------------------------------------------------
-# v4 NEW: CONFORMAL PREDICTION
-# ----------------------------------------------------------------
+# ====================================================================
+#  CONFORMAL PREDICTION
+# ====================================================================
 
 def conformal_prediction(y_cal, p_cal, p_test, alpha=0.05):
     """
@@ -876,9 +904,9 @@ def conformal_prediction(y_cal, p_cal, p_test, alpha=0.05):
     }
 
 
-# ----------------------------------------------------------------
-# v4 NEW: PAIRED BOOTSTRAP AUC COMPARISON
-# ----------------------------------------------------------------
+# ====================================================================
+#  PAIRED BOOTSTRAP AUC COMPARISON
+# ====================================================================
 
 def paired_bootstrap_auc_test(y_true, p1, p2, n_bootstrap=2000, seed=42):
     """
@@ -922,9 +950,9 @@ def paired_bootstrap_auc_test(y_true, p1, p2, n_bootstrap=2000, seed=42):
     }
 
 
-# ----------------------------------------------------------------
-# v4 NEW: LEARNING CURVE ANALYSIS
-# ----------------------------------------------------------------
+# ====================================================================
+#  LEARNING CURVE ANALYSIS
+# ====================================================================
 
 def compute_learning_curves(models, X_train, y_train, cfg):
     """Compute AUC vs training size for each model."""
@@ -948,9 +976,9 @@ def compute_learning_curves(models, X_train, y_train, cfg):
     return results
 
 
-# ----------------------------------------------------------------
-# v4 NEW: FGSM ADVERSARIAL ROBUSTNESS
-# ----------------------------------------------------------------
+# ====================================================================
+#  FGSM ADVERSARIAL ROBUSTNESS
+# ====================================================================
 
 def fgsm_adversarial_test(X_test, y_test, predict_fn, epsilons, feature_names, rng):
     """
@@ -1010,9 +1038,9 @@ def fgsm_adversarial_test(X_test, y_test, predict_fn, epsilons, feature_names, r
     return results
 
 
-# ----------------------------------------------------------------
-# v4.1 NEW: THREE-LAYER STREAMING SIMULATION
-# ----------------------------------------------------------------
+# ====================================================================
+#  STREAMING DEPLOYMENT SIMULATION
+# ====================================================================
 
 def streaming_simulation(X_raw_test, y_test, predict_fns, feature_names,
                          conformal_q_hat, cfg, rng):
@@ -1337,9 +1365,9 @@ def compute_page_hinkley(stream_df, cfg, brier_col="HYBRID_rolling_brier",
     return results
 
 
-# ----------------------------------------------------------------
-# v4.2 NEW: GENERALISATION & GOVERNANCE SUITE
-# ----------------------------------------------------------------
+# ====================================================================
+#  GENERALISATION AND GOVERNANCE
+# ====================================================================
 
 def generate_synthetic_dsgc(n_samples, tau_range, g_range, p_range, rng):
     """
@@ -1699,9 +1727,9 @@ def compute_feature_psi_per_batch(X_train, X_raw_test, feature_names, cfg, rng):
     return results
 
 
-# ----------------------------------------------------------------
-# STRESS TESTING (expanded from v3)
-# ----------------------------------------------------------------
+# ====================================================================
+#  STRESS TESTING
+# ====================================================================
 
 def add_relative_noise(X, level, rng):
     if level <= 0: return X.copy()
@@ -1741,9 +1769,9 @@ def monte_carlo_noise_test(X, y, predict_fn, level, n_trials, rng):
             "min_auc": round(float(np.min(aucs)), 4)}
 
 
-# ----------------------------------------------------------------
-# AUTO-STABILIZER (Adam, same as v3)
-# ----------------------------------------------------------------
+# ====================================================================
+#  AUTO STABILISER
+# ====================================================================
 
 def auto_stabilize(tau, g, p, predict_fn, feature_cols, max_iters=500,
                    target_prob=0.15, lr=0.3, eps=0.02, beta1=0.9, beta2=0.999):
@@ -1940,9 +1968,9 @@ def run_shap_analysis(models, X_test, cfg, output_dir):
     return shap_results
 
 
-# ----------------------------------------------------------------
-# BROWSER EXPORT (same as v3, adapted)
-# ----------------------------------------------------------------
+# ====================================================================
+#  BROWSER EXPORT
+# ====================================================================
 
 def export_for_browser(svm_model, rf_model, lgbm_model, scaler, hybrid_info,
                        metrics, feature_names, raw_feature_names, cfg, output_path):
@@ -1993,9 +2021,9 @@ def export_for_browser(svm_model, rf_model, lgbm_model, scaler, hybrid_info,
     return os.path.getsize(output_path) / 1024
 
 
-# ----------------------------------------------------------------
-# CHECKPOINT UTILITY
-# ----------------------------------------------------------------
+# ====================================================================
+#  CHECKPOINT UTILITY
+# ====================================================================
 
 def save_checkpoint(out_dir: Path, stage: str, data: dict):
     """Save stage-wise checkpoint for crash resilience."""
@@ -2004,9 +2032,9 @@ def save_checkpoint(out_dir: Path, stage: str, data: dict):
     return cp_path
 
 
-# ----------------------------------------------------------------
-# FIGURE GENERATION (v4.2)
-# ----------------------------------------------------------------
+# ====================================================================
+#  FIGURE GENERATION
+# ====================================================================
 
 def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
                      rfecv_df, stress_rows, adv_results, stream_df,
@@ -2220,22 +2248,37 @@ def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
     except Exception as e:
         print(f"    [!] Fig 10 failed: {e}")
 
-    # Fig 11: Calibration
+    # Fig 11: Calibration (quantile binning, 15 bins)
     try:
-        fig, ax = plt.subplots(figsize=(6, 6))
-        ax.plot([0, 1], [0, 1], "k--", alpha=0.5, label="Perfect")
-        for model, color in [("HYBRID", "#1f77b4"), ("SVM_cal", "#d62728"), ("RF_cal", "#2ca02c"), ("LGBM_cal", "#ff7f0e")]:
-            sub = cal_data[cal_data["model"] == model]
-            if len(sub) > 0:
-                ax.plot(sub["mean_predicted"], sub["fraction_positive"], "o-", color=color, label=model, markersize=4, linewidth=1.5)
-        ax.set_xlabel("Mean Predicted Probability")
-        ax.set_ylabel("Fraction Positive")
-        ax.set_title("Figure 11: Calibration Curves", fontweight="bold")
-        ax.legend()
-        ax.set_xlim(-0.02, 1.02)
-        ax.set_ylim(-0.02, 1.02)
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5.5))
+
+        for ax, strat, title_suffix in [
+            (axes[0], "quantile", "Quantile Binning (15 bins)"),
+            (axes[1], "uniform", "Uniform Binning (15 bins)"),
+        ]:
+            ax.plot([0, 1], [0, 1], "k--", alpha=0.4, linewidth=0.8, label="Perfect calibration")
+            for model, color in [("HYBRID", "#1f77b4"), ("SVM_cal", "#d62728"), ("RF_cal", "#2ca02c"), ("LGBM_cal", "#ff7f0e")]:
+                sub = cal_data[(cal_data["model"] == model) & (cal_data["strategy"] == strat)]
+                if len(sub) > 0:
+                    ax.plot(sub["mean_predicted"], sub["fraction_positive"], "o-", color=color, label=model, markersize=4, linewidth=1.5)
+            ax.set_xlabel("Mean Predicted Probability")
+            ax.set_ylabel("Fraction Positive")
+            ax.set_title(title_suffix, fontweight="bold")
+            ax.legend(fontsize=8)
+            ax.set_xlim(-0.02, 1.02)
+            ax.set_ylim(-0.02, 1.02)
+
+        # Interpretation annotation
+        fig.text(0.5, -0.02,
+            "Note: The Hybrid outputs extreme probabilities (near 0 or 1) due to high discrimination.\n"
+            "Quantile binning (left) ensures evenly populated bins for stable comparison.\n"
+            "Uniform binning (right) shows most predictions fall in the extreme bins, confirming overconfidence.",
+            ha="center", fontsize=8, fontstyle="italic", color="grey",
+            transform=fig.transFigure)
+
+        fig.suptitle("Figure 11: Calibration Curves", fontweight="bold", y=1.02)
         plt.tight_layout()
-        plt.savefig(fig_dir / "fig11_calibration_curves.png")
+        plt.savefig(fig_dir / "fig11_calibration_curves.png", bbox_inches="tight")
         plt.close()
         count += 1
     except Exception as e:
@@ -2475,9 +2518,9 @@ def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
     return count
 
 
-# ----------------------------------------------------------------
-# MAIN PIPELINE
-# ----------------------------------------------------------------
+# ====================================================================
+#  MAIN PIPELINE
+# ====================================================================
 
 def main():
     t_start = time.time()
@@ -3233,8 +3276,27 @@ def main():
     cal_probs = {n: test_probs[n] for n in ["SVM", "RF", "LGBM"]}
     cal_probs.update({f"{n}_cal": test_probs[f"{n}_cal"] for n in ["SVM", "RF", "LGBM"]})
     cal_probs["HYBRID"] = p_hybrid
+
+    # Probability distribution analysis (honest interpretation)
+    Console.subsection("Probability Distribution (HYBRID)")
+    p_h = p_hybrid
+    Console.kv("  Mean P", f"{p_h.mean():.4f}")
+    Console.kv("  Std P", f"{p_h.std():.4f}")
+    Console.kv("  P < 0.1", f"{(p_h < 0.1).sum()} ({(p_h < 0.1).mean():.1%})")
+    Console.kv("  P > 0.9", f"{(p_h > 0.9).sum()} ({(p_h > 0.9).mean():.1%})")
+    Console.kv("  P in [0.1, 0.9]", f"{((p_h >= 0.1) & (p_h <= 0.9)).sum()} ({((p_h >= 0.1) & (p_h <= 0.9)).mean():.1%})")
+
+    # Overconfidence assessment
+    extreme_pct = float((p_h < 0.05).mean() + (p_h > 0.95).mean()) * 100
+    if extreme_pct > 80:
+        Console.kv("  Assessment", f"Overconfident: {extreme_pct:.1f}% of predictions are extreme (P<0.05 or P>0.95)")
+        Console.kv("  Interpretation", "High AUC with extreme probabilities indicates strong discrimination but overconfident outputs")
+        Console.kv("  Note", "Calibration curves use quantile binning (15 bins) for stable comparison")
+    else:
+        Console.kv("  Assessment", f"Well distributed: {extreme_pct:.1f}% extreme predictions")
+
     calibration_analysis(y_test, cal_probs).to_csv(out / "calibration_data.csv", index=False)
-    Console.done("Saved  > calibration_data.csv")
+    Console.done("Saved: calibration_data.csv (quantile + uniform, 15 bins)")
 
     # 20c. FIGURE GENERATION
     Console.section("FIGURE GENERATION (matplotlib)")
@@ -3299,20 +3361,28 @@ def main():
 
     # SUMMARY
     elapsed = time.time() - t_start
-    print("\n" + "=" * (Console.WIDTH + 2))
-    print("  " + " PIPELINE COMPLETE: A.G.N.E.S. v4.2".center(Console.WIDTH) + "  ")
-    print("=" * (Console.WIDTH + 2))
+    w = Console.WIDTH
+    print()
+    print("+" + "-" * w + "+")
+    print("|" + "PIPELINE COMPLETE".center(w) + "|")
+    print("|" + "A.G.N.E.S. v4.2".center(w) + "|")
+    print("+" + "-" * w + "+")
     for line in [
-        f"* HYBRID AUC={all_metrics['HYBRID']['roc_auc']:.4f}  F1={all_metrics['HYBRID']['f1_unstable']:.4f}  Brier={all_metrics['HYBRID']['brier_score']:.4f}",
+        "",
+        f"  HYBRID  AUC={all_metrics['HYBRID']['roc_auc']:.4f}  F1={all_metrics['HYBRID']['f1_unstable']:.4f}  Brier={all_metrics['HYBRID']['brier_score']:.4f}",
         f"  LGBM   AUC={all_metrics['LGBM']['roc_auc']:.4f}  F1={all_metrics['LGBM']['f1_unstable']:.4f}  Brier={all_metrics['LGBM']['brier_score']:.4f}",
-        f"  Bootstrap p={bootstrap_result['p_value']:.4f}  {'Significant' if bootstrap_result['significant_at_005'] else 'Not significant'}",
-        f"Features: {X_raw.shape[1]} raw  > {X_full.shape[1]} eng  > {len(selected_features)} selected",
-        f"Conformal coverage: {coverage:.4f} (target {1-cfg.conformal_alpha:.2f})",
-        f"FGSM eps=0.05: HYBRID flip={adv_results['HYBRID'][4]['flip_rate']:.3f}  LGBM flip={adv_results['LGBM'][4]['flip_rate']:.3f}",
-        f"Artifacts: {cfg.output_dir}/  |  Runtime: {elapsed:.0f}s",
+        f"  Bootstrap p = {bootstrap_result['p_value']:.4f}  {'(significant)' if bootstrap_result['significant_at_005'] else '(not significant)'}",
+        "",
+        f"  Features     {X_raw.shape[1]} raw  >  {X_full.shape[1]} engineered  >  {len(selected_features)} selected",
+        f"  Coverage     {coverage:.4f} (target {1-cfg.conformal_alpha:.2f})",
+        f"  FGSM 0.05   HYBRID flip {adv_results['HYBRID'][4]['flip_rate']:.3f}  |  LGBM flip {adv_results['LGBM'][4]['flip_rate']:.3f}",
+        "",
+        f"  Artifacts    {cfg.output_dir}/",
+        f"  Runtime      {elapsed:.0f}s",
     ]:
-        print("  " + line.ljust(Console.WIDTH))
-    print("=" * (Console.WIDTH + 2) + "\n")
+        print("|" + line.ljust(w) + "|")
+    print("+" + "-" * w + "+")
+    print()
 
 
 if __name__ == "__main__":
