@@ -7,7 +7,7 @@
 |  Author      : Husain Ali Al Hashem (2160425)                        |
 |  Supervisor  : Dr. Shamsul Masum                                     |
 |  Institution : University of Portsmouth                              |
-|  Programme   : BEng Electrical and Renewable Energy Engineering      |
+|  Programme   : BEng(Hons)  Renewable Energy Engineering              |
 |  Year        : 2025 to 2026                                          |
 +----------------------------------------------------------------------+
 
