@@ -1,4 +1,4 @@
-# A.G.N.E.S. — Adaptive Grid Neural Engineering System v4.2
+# A.G.N.E.S. - Adaptive Grid Neural Engineering System v4.2
 
 **Smart Grid Stability Intelligence**
 
