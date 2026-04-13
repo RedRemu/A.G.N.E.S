@@ -1,8 +1,0 @@
-{
-  "cost_optimal_threshold": 0.77,
-  "cost_at_optimal": 5.0,
-  "youden_threshold": 0.77,
-  "youden_index": 0.9988,
-  "risk_stable_threshold": 0.15,
-  "risk_critical_threshold": 0.6
-}
