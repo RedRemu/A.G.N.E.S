@@ -1,0 +1,22 @@
+{
+  "HYBRID": {
+    "single_ms": 38.068,
+    "batch_1000_ms": 181.0,
+    "throughput_per_sec": 5525.0
+  },
+  "SVM": {
+    "single_ms": 1.592,
+    "batch_1000_ms": 98.9,
+    "throughput_per_sec": 10108.0
+  },
+  "RF": {
+    "single_ms": 35.548,
+    "batch_1000_ms": 82.2,
+    "throughput_per_sec": 12161.0
+  },
+  "LGBM": {
+    "single_ms": 1.405,
+    "batch_1000_ms": 21.8,
+    "throughput_per_sec": 45942.0
+  }
+}

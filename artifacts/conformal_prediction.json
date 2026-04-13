@@ -1,0 +1,10 @@
+{
+  "q_hat": 0.0004,
+  "alpha": 0.05,
+  "coverage_target": 0.95,
+  "singleton_rate": 1.0,
+  "ambiguous_rate": 0.0,
+  "empty_rate": 0.0,
+  "mean_set_size": 1.0,
+  "empirical_coverage": 0.9995
+}

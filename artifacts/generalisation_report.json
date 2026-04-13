@@ -1,0 +1,230 @@
+{
+  "synthetic_dsgc": {
+    "n_samples": 5000,
+    "tau_range": [
+      0.5,
+      15.0
+    ],
+    "g_range": [
+      0.05,
+      2.0
+    ],
+    "p_range": [
+      -7.0,
+      7.0
+    ],
+    "class_balance": {
+      "stable": 1672,
+      "unstable": 3328
+    },
+    "model_results": {
+      "HYBRID": {
+        "auc": 0.8531,
+        "f1": 0.8829,
+        "brier": 0.1685
+      },
+      "SVM": {
+        "auc": 0.9043,
+        "f1": 0.8813,
+        "brier": 0.149
+      },
+      "RF": {
+        "auc": 0.8365,
+        "f1": 0.8827,
+        "brier": 0.1503
+      },
+      "LGBM": {
+        "auc": 0.7997,
+        "f1": 0.8949,
+        "brier": 0.1481
+      }
+    }
+  },
+  "cross_regime": {
+    "tau_low_to_tau_high": {
+      "n_train": 30000,
+      "n_test": 30000,
+      "train_unstable_pct": 43.7,
+      "test_unstable_pct": 83.9,
+      "auc": 0.9907,
+      "f1": 0.9638,
+      "brier": 0.0549
+    },
+    "tau_high_to_tau_low": {
+      "n_train": 30000,
+      "n_test": 30000,
+      "train_unstable_pct": 83.9,
+      "test_unstable_pct": 43.7,
+      "auc": 0.9675,
+      "f1": 0.7511,
+      "brier": 0.1737
+    },
+    "g_low_to_g_high": {
+      "n_train": 30000,
+      "n_test": 30000,
+      "train_unstable_pct": 47.0,
+      "test_unstable_pct": 80.6,
+      "auc": 0.972,
+      "f1": 0.9529,
+      "brier": 0.0675
+    },
+    "g_high_to_g_low": {
+      "n_train": 30000,
+      "n_test": 30000,
+      "train_unstable_pct": 80.6,
+      "test_unstable_pct": 47.0,
+      "auc": 0.9453,
+      "f1": 0.729,
+      "brier": 0.242
+    }
+  },
+  "drift_detection": {
+    "psi_alert_threshold": 0.25,
+    "first_alert_batch": 55,
+    "cusum_first_alert_batch": 34,
+    "page_hinkley_first_alert_batch": 9,
+    "cusum_thresholds": {
+      "brier": 0.0392,
+      "confidence": 0.0067
+    },
+    "page_hinkley_thresholds": {
+      "brier": 0.0392,
+      "confidence": 0.0067
+    },
+    "cusum_first_alerts_by_metric": {
+      "brier": 46,
+      "confidence": 34
+    },
+    "page_hinkley_first_alerts_by_metric": {
+      "brier": 9,
+      "confidence": 30
+    },
+    "phase_mean_psi": {
+      "pre_drift": 0.0991,
+      "gradual": 0.2937,
+      "post_abrupt": 1.6654
+    },
+    "phase_mean_kl": {
+      "pre_drift": 0.0496,
+      "gradual": 0.1473,
+      "post_abrupt": 0.8328
+    }
+  },
+  "shap_under_drift": {
+    "clean": {
+      "top_5": [
+        {
+          "feature": "F_gain_mean",
+          "mean_abs_shap": 9.3497
+        },
+        {
+          "feature": "tau_std",
+          "mean_abs_shap": 3.4242
+        },
+        {
+          "feature": "g_mean",
+          "mean_abs_shap": 2.5663
+        },
+        {
+          "feature": "tau_mean",
+          "mean_abs_shap": 2.4157
+        },
+        {
+          "feature": "D_eff_std",
+          "mean_abs_shap": 1.3634
+        }
+      ],
+      "f_gain_mean_rank": 1,
+      "f_gain_mean_shap": 9.3497
+    },
+    "gradual_drift": {
+      "top_5": [
+        {
+          "feature": "F_gain_mean",
+          "mean_abs_shap": 9.6371
+        },
+        {
+          "feature": "tau_std",
+          "mean_abs_shap": 5.5754
+        },
+        {
+          "feature": "tau_mean",
+          "mean_abs_shap": 3.0331
+        },
+        {
+          "feature": "g_mean",
+          "mean_abs_shap": 1.8799
+        },
+        {
+          "feature": "R_min",
+          "mean_abs_shap": 1.6937
+        }
+      ],
+      "f_gain_mean_rank": 1,
+      "f_gain_mean_shap": 9.6371
+    },
+    "post_abrupt": {
+      "top_5": [
+        {
+          "feature": "F_gain_mean",
+          "mean_abs_shap": 8.7847
+        },
+        {
+          "feature": "tau_std",
+          "mean_abs_shap": 5.2402
+        },
+        {
+          "feature": "tau_mean",
+          "mean_abs_shap": 3.064
+        },
+        {
+          "feature": "g_mean",
+          "mean_abs_shap": 3.0315
+        },
+        {
+          "feature": "D_eff_mean",
+          "mean_abs_shap": 1.6066
+        }
+      ],
+      "f_gain_mean_rank": 1,
+      "f_gain_mean_shap": 8.7847
+    }
+  },
+  "governance": {
+    "data_governance": {
+      "leakage_prevention": "stab and stabf columns dropped before feature engineering",
+      "feature_freeze": "14 features selected by RFECV, frozen for all evaluation",
+      "train_test_segregation": "Stratified 60/20/20 split, val used only for calibration"
+    },
+    "model_lifecycle": {
+      "recalibration_trigger": "PSI > 0.25 on feature distributions",
+      "monitoring_metrics": [
+        "rolling_auc",
+        "rolling_ece",
+        "conformal_coverage",
+        "feature_psi",
+        "cusum_brier",
+        "cusum_confidence",
+        "page_hinkley_brier",
+        "page_hinkley_confidence"
+      ],
+      "retraining_recommendation": "When conformal coverage drops below 90% or PSI exceeds 0.25 for 5 consecutive batches",
+      "cross_validation_scheme": {
+        "use_cpcv": false,
+        "purge_batches": 0,
+        "embargo_batches": 0
+      }
+    },
+    "auditability": {
+      "reproducible_seed": 42,
+      "version_logging": "run_metadata.json contains all library versions",
+      "checkpoints": "checkpoint_hpo.joblib and checkpoint_models.joblib for crash recovery",
+      "artifacts_count": 20
+    },
+    "explainability": {
+      "global": "Permutation importance + SHAP main effects",
+      "local": "SHAP interaction values for individual predictions",
+      "under_stress": "SHAP rankings verified across clean, gradual drift, and abrupt shift phases"
+    }
+  }
+}
