@@ -1,0 +1,129 @@
+{
+  "critical": {
+    "prob_before": 0.9999,
+    "prob_after": 0.9968,
+    "reduction_pct": 0.3,
+    "iterations": 500,
+    "tau_before": [
+      0.865765829868347,
+      2.36600063444087,
+      5.90268980070767,
+      3.79957241779442
+    ],
+    "tau_after": [
+      0.527,
+      2.066,
+      5.603,
+      3.5
+    ],
+    "g_before": [
+      0.980559692440584,
+      0.81388351395424,
+      0.907023857121482,
+      0.961780817034066
+    ],
+    "g_after": [
+      1.2806,
+      1.1139,
+      1.207,
+      1.2618
+    ],
+    "corrections": [
+      {
+        "node": 1,
+        "param": "tau1",
+        "before": 0.866,
+        "after": 0.527,
+        "delta": -0.339,
+        "action": "Reduce reaction time by 0.3s"
+      },
+      {
+        "node": 1,
+        "param": "g1",
+        "before": 0.9806,
+        "after": 1.2806,
+        "delta": 0.3,
+        "action": "Increase elasticity by 0.300"
+      },
+      {
+        "node": 2,
+        "param": "tau2",
+        "before": 2.366,
+        "after": 2.066,
+        "delta": -0.3,
+        "action": "Reduce reaction time by 0.3s"
+      },
+      {
+        "node": 2,
+        "param": "g2",
+        "before": 0.8139,
+        "after": 1.1139,
+        "delta": 0.3,
+        "action": "Increase elasticity by 0.300"
+      },
+      {
+        "node": 3,
+        "param": "tau3",
+        "before": 5.903,
+        "after": 5.603,
+        "delta": -0.3,
+        "action": "Reduce reaction time by 0.3s"
+      },
+      {
+        "node": 3,
+        "param": "g3",
+        "before": 0.907,
+        "after": 1.207,
+        "delta": 0.3,
+        "action": "Increase elasticity by 0.300"
+      },
+      {
+        "node": 4,
+        "param": "tau4",
+        "before": 3.8,
+        "after": 3.5,
+        "delta": -0.3,
+        "action": "Reduce reaction time by 0.3s"
+      },
+      {
+        "node": 4,
+        "param": "g4",
+        "before": 0.9618,
+        "after": 1.2618,
+        "delta": 0.3,
+        "action": "Increase elasticity by 0.300"
+      }
+    ]
+  },
+  "borderline": {
+    "prob_before": 0.9998,
+    "prob_after": 0.9998,
+    "reduction_pct": -0.0,
+    "iterations": 500,
+    "tau_before": [
+      7.42990237184716,
+      5.52437622063678,
+      2.52758793871637,
+      5.77228288954364
+    ],
+    "tau_after": [
+      7.43,
+      5.524,
+      2.528,
+      5.772
+    ],
+    "g_before": [
+      0.604987930445229,
+      0.745665142938249,
+      0.908594856673259,
+      0.88810858568127
+    ],
+    "g_after": [
+      0.605,
+      0.7457,
+      0.9086,
+      0.8881
+    ],
+    "corrections": []
+  }
+}
