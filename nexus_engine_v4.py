@@ -7,11 +7,11 @@
 |  Author      : Husain Ali Al Hashem (2160425)                        |
 |  Supervisor  : Dr. Shamsul Masum                                     |
 |  Institution : University of Portsmouth                              |
-|  Programme   : BEng(Hons)  Renewable Energy Engineering              |
+|  Programme   : BEng Electrical and Renewable Energy Engineering      |
 |  Year        : 2025 to 2026                                          |
 +----------------------------------------------------------------------+
 
-Production grade stacking hybrid ensemble for predicting stability
+Research-grade stacking hybrid ensemble for predicting stability
 in a 4 node Decentral Smart Grid Control (DSGC) network.
 
 Pipeline Architecture
@@ -41,6 +41,53 @@ Dependencies
 Usage
     python nexus_engine_v4.py
 """
+
+# ############################################################################
+# #                          P O R T A B I L I T Y   G U I D E              ##
+# ############################################################################
+# # This script is purpose-built for the 4-node Decentral Smart Grid Control
+# # (DSGC) stability problem (features: tau1..tau4, g1..g4, p1..p4 -> stabf).
+# #
+# # If you want to repurpose this pipeline for a different binary classifica-
+# # tion problem (medical, financial, industrial, etc.), look for blocks
+# # tagged:
+# #
+# #     # >>> GRID-SPECIFIC START : <reason>
+# #         ...
+# #     # >>> GRID-SPECIFIC END
+# #
+# # Inline single-line bits are tagged:  # [GRID-SPECIFIC] <reason>
+# #
+# # Sections you SHOULD remove or replace for a non-grid application:
+# #   - engineer_features()        (DSGC physics: D_eff, F_gain, V_weak, ...)
+# #   - generate_synthetic_dsgc()  (DSGC sampling + analytical stability law)
+# #   - auto_stabilize()           (corrective tau/g controller, grid-only)
+# #   - cross_regime_validation()  (splits by tau_mean / g_mean medians)
+# #   - shap_under_drift()         (applies tau/g drift factors)
+# #   - make_ood_scaled()          (scales tau/g columns)
+# #   - boundary_sensitivity_test()(perturbs tau/g columns)
+# #   - streaming drift logic in streaming_simulation()  (tau aging + g shift)
+# #   - StackingHybridSVMRF meta-feature injection of g_mean / tau_mean
+# #   - The AUTO-STABILIZER block in main()
+# #   - Console.banner() (A.G.N.E.S. branding)
+# #   - The grid-specific config defaults: stream_drift_*, synth_*_range
+# #   - load_dataset() target column "stabf" (replace with your label name)
+# #
+# # Sections that are FULLY GENERAL and worth keeping in any binary task:
+# #   - RFECV feature selection
+# #   - Optuna HPO (optimise_svm / optimise_rf / optimise_lgbm)
+# #   - Calibration (Platt / Isotonic) and ECE
+# #   - Cost-optimal threshold + 3-level risk index
+# #   - Conformal prediction (split conformal)
+# #   - Paired bootstrap AUC test
+# #   - Learning curves
+# #   - FGSM adversarial robustness
+# #   - Generic noise / Monte Carlo stress testing
+# #   - PSI / KL divergence drift metrics
+# #   - CUSUM and Page-Hinkley sequential change detectors
+# #   - SHAP analysis
+# #   - Calibration curves and figure generation
+# ############################################################################
 
 from __future__ import annotations
 
@@ -111,12 +158,13 @@ except ImportError:
     print("[!]  SHAP not installed .. skipping explainability.\n")
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  CONFIGURATION
-# ====================================================================
+# ____________________________________________________________________
 
 @dataclass
 class Config:
+    # [GRID-SPECIFIC] Replace with your dataset filename for other applications
     data_filename: str = "smart_grid_stability_augmented.csv.xlsx"
     output_dir: str = "artifacts"
     random_state: int = 42
@@ -188,6 +236,9 @@ class Config:
     )
 
     # Threshold optimisation cost matrix
+    # NOTE: function optimise_thresholds() itself is GENERAL, but these
+    # defaults reflect grid asymmetry (a missed instability is much worse than
+    # a false alarm). Re-tune cost_fn / cost_fp for your domain's cost ratio.
     cost_fn: float = 10.0   # cost of missed instability (FN)
     cost_fp: float = 1.0    # cost of false alarm (FP)
 
@@ -204,20 +255,24 @@ class Config:
     # Streaming simulation
     stream_batch_size: int = 100
     stream_rolling_window: int = 10          # batches for rolling metrics
+    # >>> GRID-SPECIFIC START : drift parameters tied to grid physics (tau aging, g reconfig)
     stream_drift_start_batch: int = 40       # when gradual drift begins
     stream_abrupt_batch: int = 80            # abrupt regime change
     stream_drift_tau_factor: float = 1.5     # tau scales up to this by end (aging inverters)
     stream_drift_g_factor: float = 0.7       # g abruptly drops to this (reconfiguration)
-    stream_sensor_noise: float = 0.02        # SCADA Gaussian noise level
+    # >>> GRID-SPECIFIC END
+    stream_sensor_noise: float = 0.02        # SCADA Gaussian noise level  [GRID-SPECIFIC naming, but generic noise concept]
     stream_missing_rate: float = 0.05        # fraction of missing sensor values
     stream_quantize_decimals: int = 2        # sensor ADC resolution
     stream_latency_rate: float = 0.10        # fraction of stale predictions
 
+    # >>> GRID-SPECIFIC START : Generalisation suite for synthetic DSGC samples
     # Generalisation & governance
     synth_n_samples: int = 5000              # synthetic DSGC samples to generate
     synth_tau_range: tuple = (0.5, 15.0)     # wider than training (original ~1-10)
     synth_g_range: tuple = (0.05, 2.0)       # wider than training (original ~0.05-1.0)
     synth_p_range: tuple = (-7.0, 7.0)       # wider than training (original ~-5 to 5)
+    # >>> GRID-SPECIFIC END
     psi_alert_threshold: float = 0.25        # PSI > this triggers recalibration alert
     use_cpcv: bool = False                   # combinatorial purged CV (disabled for this dataset)
     cpcv_purge_batches: int = 0              # batches purged before validation folds
@@ -253,15 +308,16 @@ def resolve_parallelism(cfg: Config) -> Config:
 CFG = resolve_parallelism(Config())
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  CONSOLE OUTPUT
-# ====================================================================
+# ____________________________________________________________________
 
 class Console:
     WIDTH = 70
 
     @staticmethod
     def banner():
+        # >>> GRID-SPECIFIC START : A.G.N.E.S. branding, replace text for your project
         w = Console.WIDTH
         print()
         print("+" + "-" * w + "+")
@@ -273,6 +329,7 @@ class Console:
         print("|" + "University of Portsmouth, 2025 to 2026".center(w) + "|")
         print("+" + "-" * w + "+")
         print()
+        # >>> GRID-SPECIFIC END
 
     @staticmethod
     def section(title: str):
@@ -302,9 +359,9 @@ class Console:
             print("    " + "  ".join(str(v).ljust(w) for v, w in zip(row, col_widths)))
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  DATA LOADING
-# ====================================================================
+# ____________________________________________________________________
 
 def load_dataset(path: str | Path) -> tuple[pd.DataFrame, np.ndarray]:
     path = Path(path)
@@ -314,6 +371,7 @@ def load_dataset(path: str | Path) -> tuple[pd.DataFrame, np.ndarray]:
         df = pd.read_excel(path)
     else:
         df = pd.read_csv(path)
+    # >>> GRID-SPECIFIC START : target column "stabf" (stable / unstable). Replace with your label.
     if "stabf" not in df.columns:
         raise ValueError(f"'stabf' column missing.")
     drop_cols = [c for c in ["stab", "stabf"] if c in df.columns]
@@ -323,12 +381,19 @@ def load_dataset(path: str | Path) -> tuple[pd.DataFrame, np.ndarray]:
     y = y_raw.map(mapping)
     if y.isna().any():
         raise ValueError(f"Unmapped stabf values: {sorted(y_raw[y.isna()].unique().tolist())}")
+    # >>> GRID-SPECIFIC END
     return X, y.to_numpy(dtype=int)
 
 
-# ====================================================================
+# _____________________________________________________________________
 #  FEATURE ENGINEERING
-# ====================================================================
+# _____________________________________________________________________
+# ############################################################################
+# >>> GRID-SPECIFIC START : engineer_features()
+# >>> ENTIRELY tied to DSGC physics (tau, g, p columns -> damping / feedback
+# >>> gain / vulnerability features). REPLACE this whole function with your
+# >>> own domain feature engineering, OR delete it and pass X through as-is.
+# ############################################################################
 
 def engineer_features(X: pd.DataFrame) -> pd.DataFrame:
     """
@@ -411,10 +476,13 @@ def engineer_features(X: pd.DataFrame) -> pd.DataFrame:
 
     return Xn
 
+# >>> GRID-SPECIFIC END : engineer_features()
+# ############################################################################
 
-# ====================================================================
+
+# ____________________________________________________________________
 #  RFECV FEATURE SELECTION
-# ====================================================================
+# ____________________________________________________________________
 
 def run_rfecv(X_train: pd.DataFrame, y_train: np.ndarray,
               cfg: Config) -> tuple[list[str], RFECV]:
@@ -445,9 +513,9 @@ def run_rfecv(X_train: pd.DataFrame, y_train: np.ndarray,
     return selected, selector
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  BAYESIAN HYPERPARAMETER OPTIMISATION
-# ====================================================================
+# ____________________________________________________________________
 
 def optimise_svm(X_train, y_train, cfg):
     """Bayesian HPO for SVM. Trials run in parallel via Optuna n_jobs."""
@@ -548,9 +616,9 @@ def run_parallel_hpo(X_train, y_train, cfg):
     return results.get("SVM", {}), results.get("RF", {}), results.get("LGBM", {})
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  MODEL BUILDING
-# ====================================================================
+# ____________________________________________________________________
 
 def build_models(cfg, svm_params, rf_params, lgbm_params):
     models = {}
@@ -585,9 +653,9 @@ def build_models(cfg, svm_params, rf_params, lgbm_params):
     return models
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  CALIBRATION
-# ====================================================================
+# ____________________________________________________________________
 
 def _make_calibrated(model, method, X_val, y_val):
     """Create a calibrated wrapper that works across sklearn versions."""
@@ -642,9 +710,9 @@ def expected_calibration_error(y_true, p, n_bins=15):
     return ece / max(len(y_true), 1)
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  STACKING HYBRID ENSEMBLE
-# ====================================================================
+# ____________________________________________________________________
 
 class StackingHybridSVMRF(BaseEstimator, ClassifierMixin):
     _estimator_type = "classifier"
@@ -696,6 +764,9 @@ class StackingHybridSVMRF(BaseEstimator, ClassifierMixin):
 
         meta_train = np.column_stack([oof_svm, oof_rf])
         if self.use_top_features:
+            # [GRID-SPECIFIC] inject g_mean & tau_mean as meta features.
+            # For other domains, replace with your top-2 raw features, or set
+            # cfg.stack_use_top_features = False to drop this entirely.
             for col in ["g_mean", "tau_mean"]:
                 if col in X_train.columns:
                     meta_train = np.column_stack([meta_train, X_train[col].values])
@@ -715,6 +786,8 @@ class StackingHybridSVMRF(BaseEstimator, ClassifierMixin):
                 if self.cal_rf_ is not None else self.rf_model.predict_proba(X)[:, 1])
         meta = np.column_stack([p_svm, p_rf])
         if self.use_top_features:
+            # [GRID-SPECIFIC] same as in fit() -- swap g_mean/tau_mean for your
+            # domain's most informative raw features, or disable use_top_features.
             for col in ["g_mean", "tau_mean"]:
                 if col in X.columns:
                     meta = np.column_stack([meta, X[col].values])
@@ -727,9 +800,9 @@ class StackingHybridSVMRF(BaseEstimator, ClassifierMixin):
         return (self.predict_proba(X)[:, 1] >= 0.5).astype(int)
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  EVALUATION
-# ====================================================================
+# ____________________________________________________________________
 
 def compute_metrics(y_true, p, threshold=0.5):
     y_pred = (p >= threshold).astype(int)
@@ -749,6 +822,9 @@ def compute_metrics(y_true, p, threshold=0.5):
     }
 
 def risk_index(p, stable_thresh, critical_thresh):
+    # NOTE: function itself is GENERAL (3-level bucketing of any probability).
+    # The argument names (stable_thresh / critical_thresh) lean grid-themed
+    # but the logic is reusable for any 3-tier risk classification.
     r = np.zeros_like(p, dtype=int)
     r[(p >= stable_thresh) & (p < critical_thresh)] = 1
     r[p >= critical_thresh] = 2
@@ -790,9 +866,9 @@ def calibration_analysis(y_true, probs_dict, n_bins=15):
     return pd.DataFrame(rows)
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  COST OPTIMAL THRESHOLD SELECTION
-# ====================================================================
+# ____________________________________________________________________
 
 def optimise_thresholds(y_val, p_val, cost_fn=10.0, cost_fp=1.0):
     """
@@ -852,9 +928,9 @@ def optimise_thresholds(y_val, p_val, cost_fn=10.0, cost_fp=1.0):
     }
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  CONFORMAL PREDICTION
-# ====================================================================
+# ____________________________________________________________________
 
 def conformal_prediction(y_cal, p_cal, p_test, alpha=0.05):
     """
@@ -904,9 +980,9 @@ def conformal_prediction(y_cal, p_cal, p_test, alpha=0.05):
     }
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  PAIRED BOOTSTRAP AUC COMPARISON
-# ====================================================================
+# ____________________________________________________________________
 
 def paired_bootstrap_auc_test(y_true, p1, p2, n_bootstrap=2000, seed=42):
     """
@@ -950,9 +1026,9 @@ def paired_bootstrap_auc_test(y_true, p1, p2, n_bootstrap=2000, seed=42):
     }
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  LEARNING CURVE ANALYSIS
-# ====================================================================
+# ____________________________________________________________________
 
 def compute_learning_curves(models, X_train, y_train, cfg):
     """Compute AUC vs training size for each model."""
@@ -976,9 +1052,9 @@ def compute_learning_curves(models, X_train, y_train, cfg):
     return results
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  FGSM ADVERSARIAL ROBUSTNESS
-# ====================================================================
+# ____________________________________________________________________
 
 def fgsm_adversarial_test(X_test, y_test, predict_fn, epsilons, feature_names, rng):
     """
@@ -1038,9 +1114,9 @@ def fgsm_adversarial_test(X_test, y_test, predict_fn, epsilons, feature_names, r
     return results
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  STREAMING DEPLOYMENT SIMULATION
-# ====================================================================
+# ____________________________________________________________________
 
 def streaming_simulation(X_raw_test, y_test, predict_fns, feature_names,
                          conformal_q_hat, cfg, rng):
@@ -1077,6 +1153,9 @@ def streaming_simulation(X_raw_test, y_test, predict_fns, feature_names,
         X_batch_raw = X_raw_test.iloc[idx_start:idx_end].copy()
         y_batch = y_test[idx_start:idx_end]
 
+        # >>> GRID-SPECIFIC START : Layer 2 concept drift uses tau aging + g
+        # >>> reconfiguration. For other domains, replace with whatever drift
+        # >>> mechanism is realistic (e.g. covariate shift on price/age/etc.)
         # Layer 2: Concept Drift
         # Gradual drift: tau increases linearly after drift_start_batch
         tau_cols = [c for c in X_batch_raw.columns if c.lower().startswith("tau")]
@@ -1108,8 +1187,12 @@ def streaming_simulation(X_raw_test, y_test, predict_fns, feature_names,
             if c not in X_batch_eng.columns:
                 X_batch_eng[c] = 0.0
         X_batch = X_batch_eng[feature_names]
+        # >>> GRID-SPECIFIC END : drift application
 
         # Layer 3: SCADA Corruption
+        # NOTE: "SCADA" is grid telemetry terminology, but the corruptions
+        # below (noise, quantisation, missing values, latency) are GENERAL
+        # and apply to any sensor / telemetry pipeline.
         X_corrupted = X_batch.copy()
 
         # 3a. Gaussian sensor noise
@@ -1365,9 +1448,17 @@ def compute_page_hinkley(stream_df, cfg, brier_col="HYBRID_rolling_brier",
     return results
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  GENERALISATION AND GOVERNANCE
-# ====================================================================
+# ____________________________________________________________________
+
+# ############################################################################
+# >>> GRID-SPECIFIC START : generate_synthetic_dsgc()
+# >>> Entirely tied to DSGC physics (samples tau, g, p in known regimes and
+# >>> labels them with an analytical stability law fitted to the original
+# >>> Arzamasov dataset). DELETE for non-grid applications, OR replace with
+# >>> a domain-appropriate synthetic-data generator if you want OOD testing.
+# ############################################################################
 
 def generate_synthetic_dsgc(n_samples, tau_range, g_range, p_range, rng):
     """
@@ -1443,6 +1534,9 @@ def generate_synthetic_dsgc(n_samples, tau_range, g_range, p_range, rng):
 
     return df, y_synth, stab
 
+# >>> GRID-SPECIFIC END : generate_synthetic_dsgc()
+# ############################################################################
+
 
 def compute_psi(train_dist, test_dist, n_bins=10):
     """
@@ -1493,6 +1587,13 @@ def compute_kl_divergence(train_dist, test_dist, n_bins=10):
     kl_qp = np.sum(test_q * np.log(test_q / train_p))
     return float(0.5 * kl_pq + 0.5 * kl_qp)
 
+
+# ############################################################################
+# >>> GRID-SPECIFIC START : cross_regime_validation()
+# >>> Splits the data by tau_mean and g_mean medians (slow/fast grid, low/high
+# >>> elasticity). For other domains, either DELETE this, or replace tau/g with
+# >>> two physically meaningful continuous features in your data and rename.
+# ############################################################################
 
 def cross_regime_validation(X_raw, y, feature_names, build_fn, cfg, rng):
     """
@@ -1563,6 +1664,17 @@ def cross_regime_validation(X_raw, y, feature_names, build_fn, cfg, rng):
 
     return results
 
+# >>> GRID-SPECIFIC END : cross_regime_validation()
+# ############################################################################
+
+
+# ############################################################################
+# >>> GRID-SPECIFIC START : shap_under_drift()
+# >>> Applies tau/g drift factors to test data, then computes SHAP. The SHAP
+# >>> mechanics themselves are general; only the drift application is grid-
+# >>> specific. For other domains, replace the tau/g multipliers with a
+# >>> realistic shift on your covariates, OR simply skip the drift phases.
+# ############################################################################
 
 def shap_under_drift(lgbm_model, X_train_ref, X_raw_test, y_test,
                      feature_names, cfg, rng):
@@ -1625,6 +1737,9 @@ def shap_under_drift(lgbm_model, X_train_ref, X_raw_test, y_test,
 
     return phases
 
+# >>> GRID-SPECIFIC END : shap_under_drift()
+# ############################################################################
+
 
 def add_drift_detection_to_streaming(stream_df, X_train, cfg):
     """
@@ -1652,6 +1767,7 @@ def add_drift_detection_to_streaming(stream_df, X_train, cfg):
     alerts = []
 
     for _, row in stream_df.iterrows():
+        # >>> GRID-SPECIFIC START : PSI approximation uses tau / g shift magnitudes
         # Distribution shift magnitude from drift factors
         tau_shift = abs(row.get("drift_factor_tau", 1.0) - 1.0)
         g_shift = abs(row.get("drift_factor_g", 1.0) - 1.0)
@@ -1660,6 +1776,7 @@ def add_drift_detection_to_streaming(stream_df, X_train, cfg):
         # This correlates with actual feature space PSI
         psi_approx = tau_shift * 2.0 + g_shift * 3.0  # g shift has larger impact
         kl_approx = tau_shift * 1.5 + g_shift * 2.5
+        # >>> GRID-SPECIFIC END
 
         psi_values.append(round(psi_approx, 4))
         kl_values.append(round(kl_approx, 4))
@@ -1692,6 +1809,9 @@ def compute_feature_psi_per_batch(X_train, X_raw_test, feature_names, cfg, rng):
         idx_e = idx_s + bs
         X_batch_raw = X_raw_test.iloc[idx_s:idx_e].copy()
 
+        # >>> GRID-SPECIFIC START : applies tau/g drift factors before PSI calc.
+        # >>> Replace with your domain's drift mechanism, or skip drift entirely
+        # >>> and compute PSI on un-modified batches.
         # Apply drift (same logic as streaming simulation)
         drift_factor_tau = 1.0
         drift_factor_g = 1.0
@@ -1705,6 +1825,7 @@ def compute_feature_psi_per_batch(X_train, X_raw_test, feature_names, cfg, rng):
             drift_factor_g = cfg.stream_drift_g_factor
             if g_cols:
                 X_batch_raw[g_cols] = X_batch_raw[g_cols] * drift_factor_g
+        # >>> GRID-SPECIFIC END
 
         # Engineer features
         X_eng = engineer_features(X_batch_raw)
@@ -1727,9 +1848,9 @@ def compute_feature_psi_per_batch(X_train, X_raw_test, feature_names, cfg, rng):
     return results
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  STRESS TESTING
-# ====================================================================
+# ____________________________________________________________________
 
 def add_relative_noise(X, level, rng):
     if level <= 0: return X.copy()
@@ -1739,6 +1860,8 @@ def add_relative_noise(X, level, rng):
     return Xn
 
 def make_ood_scaled(X, scale):
+    # [GRID-SPECIFIC] only scales tau/g columns. For other domains, scale
+    # whichever continuous columns matter, or scale all numeric columns.
     Xo = X.copy()
     for prefix in ["tau", "g"]:
         cols = [c for c in Xo.columns if c.lower().startswith(prefix)]
@@ -1750,6 +1873,8 @@ def boundary_sensitivity_test(X, p, predict_fn, band, perturb, rng):
     if mask.sum() == 0: return {"band_count": 0, "flip_rate": None}
     Xb = X.loc[mask].copy()
     y0 = (p[mask] >= 0.5).astype(int)
+    # [GRID-SPECIFIC] only perturbs tau/g columns. For other domains, choose
+    # the columns that represent controllable / sensor inputs in your data.
     cols = [c for c in Xb.columns if c.lower().startswith(("tau", "g"))]
     if not cols: return {"band_count": int(mask.sum()), "flip_rate": None}
     sign = rng.choice([-1, 1], size=(len(Xb), len(cols)))
@@ -1769,9 +1894,17 @@ def monte_carlo_noise_test(X, y, predict_fn, level, n_trials, rng):
             "min_auc": round(float(np.min(aucs)), 4)}
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  AUTO STABILISER
-# ====================================================================
+# ____________________________________________________________________
+# ############################################################################
+# >>> GRID-SPECIFIC START : auto_stabilize()
+# >>> Entire function is a corrective grid controller: assumes 4 nodes with
+# >>> tau (reaction time, only decreases), g (elasticity, only increases),
+# >>> p (power demand, fixed). Hard-coded for 4 nodes, hard-coded physics
+# >>> constraints. DELETE entirely for non-grid applications -- this concept
+# >>> does not transfer to e.g. medical or financial classification.
+# ############################################################################
 
 def auto_stabilize(tau, g, p, predict_fn, feature_cols, max_iters=500,
                    target_prob=0.15, lr=0.3, eps=0.02, beta1=0.9, beta2=0.999):
@@ -1923,6 +2056,9 @@ def auto_stabilize(tau, g, p, predict_fn, feature_cols, max_iters=500,
         "corrections": corrections
     }
 
+# >>> GRID-SPECIFIC END : auto_stabilize()
+# ############################################################################
+
 
 def run_shap_analysis(models, X_test, cfg, output_dir):
     if not HAS_SHAP: return {"status": "skipped"}
@@ -1968,9 +2104,9 @@ def run_shap_analysis(models, X_test, cfg, output_dir):
     return shap_results
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  BROWSER EXPORT
-# ====================================================================
+# ____________________________________________________________________
 
 def export_for_browser(svm_model, rf_model, lgbm_model, scaler, hybrid_info,
                        metrics, feature_names, raw_feature_names, cfg, output_path):
@@ -2008,7 +2144,7 @@ def export_for_browser(svm_model, rf_model, lgbm_model, scaler, hybrid_info,
             "l": int(t.children_left[i]), "r": int(t.children_right[i]),
             "v": [round(float(vv), 1) for vv in t.value[i][0]]} for i in range(t.node_count)])
 
-    export = {"engine": "A.G.N.E.S. v4.1", "author": "Husain Ali Al Hashem (2160425)",
+    export = {"engine": "A.G.N.E.S. v4.1", "author": "Husain Ali Al Hashem (2160425)",  # [GRID-SPECIFIC] branding -- replace for your project
         "institution": "University of Portsmouth",
         "scaler": {"mean": [round(float(x), 6) for x in scaler.mean_],
                    "scale": [round(float(x), 6) for x in scaler.scale_], "names": raw_feature_names},
@@ -2021,9 +2157,9 @@ def export_for_browser(svm_model, rf_model, lgbm_model, scaler, hybrid_info,
     return os.path.getsize(output_path) / 1024
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  CHECKPOINT UTILITY
-# ====================================================================
+# ____________________________________________________________________
 
 def save_checkpoint(out_dir: Path, stage: str, data: dict):
     """Save stage-wise checkpoint for crash resilience."""
@@ -2032,9 +2168,9 @@ def save_checkpoint(out_dir: Path, stage: str, data: dict):
     return cp_path
 
 
-# ====================================================================
+# ____________________________________________________________________
 #  FIGURE GENERATION
-# ====================================================================
+# ____________________________________________________________________
 
 def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
                      rfecv_df, stress_rows, adv_results, stream_df,
@@ -2074,7 +2210,7 @@ def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
         colors = ["#d62728", "#2ca02c", "#ff7f0e", "#1f77b4"]
         fig, axes = plt.subplots(1, 4, figsize=(12, 3.5))
         for ax, metric, title in zip(axes, ["roc_auc", "f1_unstable", "brier_score", "ece"],
-                                      ["ROC AUC", "F1 (Unstable)", "Brier Score", "ECE"]):
+                                      ["ROC AUC", "F1 (Unstable)", "Brier Score", "ECE"]):  # [GRID-SPECIFIC] "Unstable" label -- rename to your positive-class name
             vals = [all_metrics[m][metric] for m in models_list]
             bars = ax.bar(labels, vals, color=colors, edgecolor="black", linewidth=0.5)
             ax.set_title(title, fontweight="bold")
@@ -2197,7 +2333,7 @@ def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
                 ax.plot(stream_df["batch"], stream_df[col], color=COLORS[model], linewidth=lw, label=model, alpha=a)
         ax.axhline(y=1.0, color="grey", linestyle=":", alpha=0.5, label="Static baseline")
         ax.set_xlabel("Batch")
-        ax.set_ylabel("AUC (under SCADA corruption)")
+        ax.set_ylabel("AUC (under SCADA corruption)")  # [GRID-SPECIFIC] "SCADA" wording -- rename to e.g. "sensor corruption" for non-grid use
         ax.set_title("Figure 8: Streaming Deployment: AUC Degradation", fontweight="bold")
         ax.legend(loc="lower left", ncol=3, fontsize=8)
         ax.set_ylim(0.65, 1.02)
@@ -2348,6 +2484,7 @@ def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
         print(f"    [!] Fig 12 failed: {e}")
 
     # Fig 13: Cross-Regime
+    # [GRID-SPECIFIC] cross-regime split labels are tau/g-based
     try:
         cr = gen_report.get("cross_regime", {})
         if cr:
@@ -2369,6 +2506,7 @@ def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
         print(f"    [!] Fig 13 failed: {e}")
 
     # Fig 14: Synthetic DSGC
+    # [GRID-SPECIFIC] depends on the synthetic-DSGC step
     try:
         synth = gen_report.get("synthetic_dsgc", {}).get("model_results", {})
         if synth:
@@ -2390,6 +2528,7 @@ def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
         print(f"    [!] Fig 14 failed: {e}")
 
     # Fig 15: SHAP Under Drift
+    # [GRID-SPECIFIC] reads F_gain_mean SHAP across tau/g drift phases
     try:
         sd = gen_report.get("shap_under_drift", {})
         phases = ["clean", "gradual_drift", "post_abrupt"]
@@ -2457,6 +2596,7 @@ def generate_figures(out_dir, all_metrics, importance_df, shap_csv_path,
                             color = "white" if cm[i, j] > cm.max() / 2 else "black"
                             ax.text(j, i, str(cm[i, j]), ha="center", va="center", color=color, fontsize=12, fontweight="bold")
                     ax.set_xticks([0, 1]); ax.set_yticks([0, 1])
+                    # [GRID-SPECIFIC] class names "Stable" / "Unstable" -- rename to your binary classes
                     ax.set_xticklabels(["Stable", "Unstable"])
                     ax.set_yticklabels(["Stable", "Unstable"])
                     ax.set_xlabel("Predicted"); ax.set_ylabel("Actual")
@@ -2572,6 +2712,9 @@ def main():
     Console.kv("Metadata", "Saved  > run_metadata.json")
 
     # 2. FEATURE ENGINEERING
+    # >>> GRID-SPECIFIC START : DSGC physics features. For other applications,
+    # >>> either replace engineer_features() with your domain-specific logic,
+    # >>> or do `X_full = X_raw.copy()` here to skip engineered features.
     Console.section("FEATURE ENGINEERING (v4, enhanced physics)")
     X_full = engineer_features(X_raw)
     new_feats = [c for c in X_full.columns if c not in X_raw.columns]
@@ -2581,6 +2724,7 @@ def main():
     Console.kv("Original  > Engineered", f"{X_raw.shape[1]}  > {X_full.shape[1]}")
     Console.kv("New v4 features", "F_gain_i, H_net, V_weak, F_gain_mean/std/min")
     Console.done()
+    # >>> GRID-SPECIFIC END
 
     raw_feature_names = list(X_raw.columns)
 
@@ -2731,6 +2875,9 @@ def main():
 
     # Apply optimised thresholds
     ri = risk_index(p_hybrid, thresh_results['risk_stable_threshold'], thresh_results['risk_critical_threshold'])
+    # [GRID-SPECIFIC] STABLE/BORDERLINE/CRITICAL labels are grid-themed -- the
+    # 3-level risk_index() function itself is general; just rename the labels
+    # to suit your domain (e.g. LOW / MEDIUM / HIGH for medical or financial).
     for lv, lab in [(0, "STABLE"), (1, "BORDERLINE"), (2, "CRITICAL")]:
         Console.kv(f"  {lab}", f"{int((ri==lv).sum())} ({(ri==lv).mean():.1%})")
     with open(out / "threshold_optimisation.json", "w") as f:
@@ -2965,8 +3112,8 @@ def main():
     n_batches = stream_summary["n_batches"]
     Console.kv("Batches", f"{n_batches} x {cfg.stream_batch_size} samples")
     Console.kv("Drift", f"Gradual tau x{cfg.stream_drift_tau_factor} from batch {cfg.stream_drift_start_batch}, "
-               f"Abrupt g x{cfg.stream_drift_g_factor} at batch {cfg.stream_abrupt_batch}")
-    Console.kv("SCADA", f"noise={cfg.stream_sensor_noise}, missing={cfg.stream_missing_rate:.0%}, "
+               f"Abrupt g x{cfg.stream_drift_g_factor} at batch {cfg.stream_abrupt_batch}")  # [GRID-SPECIFIC] tau/g drift wording
+    Console.kv("SCADA", f"noise={cfg.stream_sensor_noise}, missing={cfg.stream_missing_rate:.0%}, "  # [GRID-SPECIFIC] "SCADA" label
                f"quantize={cfg.stream_quantize_decimals}dp, latency={cfg.stream_latency_rate:.0%}")
 
     Console.subsection("Phase Performance (AUC under corruption)")
@@ -3010,6 +3157,11 @@ def main():
     t0 = time.time()
     gen_report = {}
 
+    # >>> GRID-SPECIFIC START : Synthetic DSGC + Cross-Regime sections.
+    # >>> Both rely on tau/g semantics. For other applications either:
+    # >>>   (a) delete sub-blocks A and B below, OR
+    # >>>   (b) replace generate_synthetic_dsgc / cross_regime_validation
+    # >>>       with domain-appropriate equivalents.
     # A. Synthetic DSGC Generation
     Console.subsection("Synthetic DSGC Data Generation")
     X_synth_raw, y_synth, stab_synth = generate_synthetic_dsgc(
@@ -3055,6 +3207,7 @@ def main():
     for split_name, res in regime_results.items():
         Console.kv(f"  {split_name}", f"AUC={res['auc']}  F1={res['f1']:.4f}  (n_train={res['n_train']}, n_test={res['n_test']})")
     gen_report["cross_regime"] = regime_results
+    # >>> GRID-SPECIFIC END : Synthetic DSGC + Cross-Regime
 
     # C. Feature Space Drift Detection (PSI & KL)
     Console.subsection("Drift Detection (PSI & KL Divergence)")
@@ -3189,6 +3342,14 @@ def main():
     Console.done("Saved  > generalisation_report.json (updated streaming_simulation.csv with PSI/KL)")
 
     # 19. AUTO-STABILIZER
+    # ##########################################################################
+    # >>> GRID-SPECIFIC START : Auto-Stabilizer demonstration block
+    # >>> Picks a critical and a borderline grid sample and demonstrates how
+    # >>> the corrective controller reduces predicted instability by adjusting
+    # >>> tau and g. Has NO meaning outside grid control. DELETE this block
+    # >>> entirely when adapting the pipeline to another domain (it depends on
+    # >>> the auto_stabilize() function which is also grid-only).
+    # ##########################################################################
     Console.section("AUTO STABILIZER (Adam)")
 
     # Find actual unstable operating points from the test set
@@ -3244,6 +3405,8 @@ def main():
     with open(out / "stabilizer_demo.json", "w") as f:
         json.dump(stab_results, f, indent=2)
     Console.done("Saved  > stabilizer_demo.json")
+    # >>> GRID-SPECIFIC END : Auto-Stabilizer demonstration block
+    # ##########################################################################
 
     # 20a. INFERENCE LATENCY BENCHMARK
     Console.section("INFERENCE LATENCY BENCHMARK")
@@ -3365,7 +3528,7 @@ def main():
     print()
     print("+" + "-" * w + "+")
     print("|" + "PIPELINE COMPLETE".center(w) + "|")
-    print("|" + "A.G.N.E.S. v4.2".center(w) + "|")
+    print("|" + "A.G.N.E.S. v4.2".center(w) + "|")  # [GRID-SPECIFIC] branding -- replace for your project
     print("+" + "-" * w + "+")
     for line in [
         "",
