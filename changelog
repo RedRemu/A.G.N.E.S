@@ -2,9 +2,10 @@
 
 All notable changes to A.G.N.E.S. (Adaptive Grid Neural Engineering System) are documented in this file.
 
-# v4.2 (2026-03-28)
+# v4.2 (2026-05-12)
 
 # Added
+- Portability guide for individuals who want to use the framework for non grid specific applications
 - CUSUM sequential change detection on rolling Brier score and rolling confidence streams
 - Page Hinkley sequential change detection as a complementary gradual drift detector
 - Triple signal drift detection figure (PSI, CUSUM, Page Hinkley side by side)
